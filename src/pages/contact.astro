@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import site from '../data/site.json';
-import { phoneLive, phoneHref } from '../lib/contact';
+import { phoneLive, phoneHref, contactName } from '../lib/contact';
 
 // `||`, not `??`. An unset GitHub Actions variable interpolates as an empty
 // string rather than being absent, and `??` only falls through on null and
@@ -36,7 +36,13 @@ const mailboxes = [
 
         <dl class="contact-details">
           {phoneLive && (
-            <div><dt>Phone</dt><dd><a href={phoneHref}>{site.phone}</a></dd></div>
+            <div>
+              <dt>Phone</dt>
+              <dd>
+                <a href={phoneHref}>{site.phone}</a>
+                {contactName && <span class="ask-for">Ask for {contactName}</span>}
+              </dd>
+            </div>
           )}
           {!site.emailPending && site.emails && (
             <div>
@@ -189,6 +195,11 @@ const mailboxes = [
     background: color-mix(in srgb, var(--accent) 8%, transparent);
     border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: var(--radius-lg);
+  }
+
+  .ask-for {
+    display: block; margin-top: 0.125rem;
+    font-size: 0.8125rem; color: var(--text-faint);
   }
 
   @media (max-width: 860px) { .contact-grid { grid-template-columns: 1fr; } }

@@ -65,6 +65,12 @@ const localBusiness = {
   url: origin,
   image: ogImage,
   ...(phoneLive ? { telephone: site.phoneRaw ?? site.phone } : {}),
+  // Named contact, so the site and the Business Profile listing agree on who
+  // answers. Emitted independently of the email flags — the person is real
+  // whether or not a mailbox is receiving yet.
+  ...((site as any).contactName
+    ? { employee: { '@type': 'Person', name: (site as any).contactName } }
+    : {}),
   // Withheld until the mailbox actually receives — a dead address in schema is worse than none.
   // One address only at the business level: `email` is part of the NAP that
   // aggregators cross-check, so it has to match the footer everywhere.

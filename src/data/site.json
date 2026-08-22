@@ -2,9 +2,10 @@
   "name": "Marshall Sheds",
   "tagline": "Barns, Sheds and Steel, Sized to the Job",
   "description": "Independent dealer of wood portable buildings and engineered steel kits — sheds, barns, garages, workshops, barndominiums and commercial spans.",
-  "phone": "",
-  "phoneRaw": "",
-  "phonePending": true,
+  "phone": "(430) 295-3979",
+  "phoneRaw": "+14302953979",
+  "phonePending": false,
+  "contactName": "Drew E",
   "email": "info@marshallsheds.com",
   "emails": {
     "info": "info@marshallsheds.com",

@@ -60,7 +60,7 @@ All content lives in `src/data/` as JSON. No code changes needed to update the c
 
 | File | Contents |
 |---|---|
-| `site.json` | Business name, phone, email, address, hours, dealer notice, launch flags |
+| `site.json` | Business name, phone, contact name, email, address, hours, dealer notice, launch flags |
 | `building-types.json` | The 24 steel building categories — copy, specs, sizes, models |
 | `models.json` | The 8 building profiles (A, B, C, R, S, T, X, M) |
 | `options.json` | Options & finishes catalog — 12 items across arch and straight-wall |
@@ -83,22 +83,20 @@ Three flags gate what a half-configured site is allowed to publish:
 | `phonePending` | The number is withheld everywhere, schema included — so it can be recorded before the line is answered |
 
 Everything that renders the phone goes through `src/lib/contact.ts`, so there is
-one place to get it wrong rather than nine.
+one place to get it wrong rather than nine. It also exports `contactName` — the
+person a caller should ask for. It is optional: with no name set the copy simply
+drops the phrase rather than printing "ask for" and trailing off.
 
 ### Before launch — required
 
-- [ ] **Get a phone number for this business**, put it in `site.json` (`phone`
-      and `phoneRaw`), and set `phonePending: false` once the line is answered.
-      Both fields are blank today and the flag is on, so the header, footer,
-      contact page, quote page, warranty page, privacy page and business schema
-      all omit the number rather than showing a placeholder or an empty
-      `tel:` link. The flag exists so a number can be recorded before it is
-      live — without it, typing one in publishes it everywhere at once,
-      including the NAP that directories cross-reference. This is the one field
-      that cannot be borrowed from another operation: Google resolves a Business
-      Profile by address plus phone, and a second profile on a number already in
-      use is filed as a duplicate and suspended. A free second line takes
-      minutes to issue.
+- [x] **Phone number** — `(430) 295-3979`, its own line, with
+      `phonePending: false`, so it now appears in the header, footer, contact
+      page, quote page, warranty page, privacy page and the business schema.
+      `contactName` is set to `Drew E`, which renders as "Ask for Drew E" beside
+      the number and as `employee` in the schema; keep it matching whoever is
+      named on the Business Profile. Leave `phonePending` in place for any
+      future change — it lets a replacement number be recorded before the line
+      is answered, instead of publishing it everywhere the moment it is typed.
 - [ ] **Set up a form endpoint** of this site's own, and test a real submission
       end to end. Sharing an endpoint with another site mixes both inboxes.
 - [ ] **Set up email forwarding** for `info@`, `sales@` and `quotes@`, then set

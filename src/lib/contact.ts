@@ -14,3 +14,10 @@ export const phoneLive: boolean = Boolean(site.phone) && !site.phonePending;
 
 /** `tel:` target. Only meaningful when `phoneLive` is true. */
 export const phoneHref = `tel:${site.phoneRaw || site.phone}`;
+
+/**
+ * Person a caller should ask for. Optional — the copy reads correctly without
+ * it, so an operation with no named contact simply omits the phrase rather
+ * than printing "ask for" and trailing off.
+ */
+export const contactName: string = (site as { contactName?: string }).contactName ?? '';

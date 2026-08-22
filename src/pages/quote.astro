@@ -4,7 +4,7 @@ import site from '../data/site.json';
 import types from '../data/building-types.json';
 import models from '../data/models.json';
 import pb from '../data/portable-buildings.json';
-import { phoneLive, phoneHref } from '../lib/contact';
+import { phoneLive, phoneHref, contactName } from '../lib/contact';
 
 /**
  * Form delivery
@@ -62,7 +62,7 @@ const pbProducts = (pb as any).products;
           <p class="or-email">
             Rather not use a form? Send your details straight to
             <a href={`mailto:${site.emails.quotes}?subject=${encodeURIComponent('Quote request')}`}>{site.emails.quotes}</a>{phoneLive ? ',' : '.'}
-            {phoneLive && (<>or call <a href={phoneHref}>{site.phone}</a>.</>)}
+            {phoneLive && (<>or call <a href={phoneHref}>{site.phone}</a>{contactName ? ` and ask for ${contactName}` : ''}.</>)}
           </p>
         )}
       </div>
