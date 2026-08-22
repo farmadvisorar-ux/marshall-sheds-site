@@ -1,0 +1,42 @@
+{
+  "name": "Marshall Sheds",
+  "tagline": "Barns, Sheds and Steel, Sized to the Job",
+  "description": "Independent dealer of wood portable buildings and engineered steel kits — sheds, barns, garages, workshops, barndominiums and commercial spans.",
+  "phone": "",
+  "phoneRaw": "",
+  "phonePending": true,
+  "email": "info@marshallsheds.com",
+  "emails": {
+    "info": "info@marshallsheds.com",
+    "sales": "sales@marshallsheds.com",
+    "quotes": "quotes@marshallsheds.com"
+  },
+  "address": {
+    "street": "360 PR 1031",
+    "city": "Marshall",
+    "region": "TX",
+    "postal": "75672",
+    "country": "USA"
+  },
+  "hours": "Mon–Fri 8:00am–6:00pm",
+  "social": {
+    "facebook": "",
+    "instagram": "",
+    "youtube": ""
+  },
+  "dealerNotice": "Marshall Sheds is an independent authorized dealer. Every building we sell is produced by one of our manufacturing partners and ships direct from their plant. Steel building kits ship nationwide and are assembled on site; wood portable buildings are delivered finished inside our regional delivery area.",
+  "indexable": false,
+  "emailPending": true,
+  "formEndpoint": "",
+  "ads": {
+    "enabled": false,
+    "provider": "",
+    "siteId": "",
+    "theme": "dark",
+    "floorCpm": "",
+    "excludePaths": [
+      "/quote/",
+      "/contact/"
+    ]
+  }
+}

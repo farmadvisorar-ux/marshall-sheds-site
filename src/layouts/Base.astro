@@ -1,0 +1,240 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import site from '../data/site.json';
+import locations from '../data/locations.json';
+import { phoneLive } from '../lib/contact';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Breadcrumb trail, excluding Home and the current page. */
+  crumbs?: { label: string; href: string }[];
+  current?: string;
+  /** Root-relative OG image, e.g. "/og/types/garages.jpg". Falls back to the default. */
+  image?: string;
+}
+
+const { title, description: rawDescription = site.description, crumbs = [], current, image } = Astro.props;
+
+/**
+ * Google shows roughly 160 characters of a description and cuts the rest
+ * mid-word. Templates are written to land well inside that, so this is a net
+ * rather than the mechanism — it should never actually fire. When it does, it
+ * ends on a word boundary so the result reads as a sentence rather than a
+ * severed clause. The build fails on anything it would have to truncate.
+ */
+function clampDescription(text: string, max = 158): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—-]+$/, '')}…`;
+}
+const description = clampDescription(rawDescription);
+
+/**
+ * Third-party ad slot (SikAds).
+ *
+ * embed.js is fetched from the vendor at run time, so whatever it does can
+ * change without a deploy here. Reviewed at integration: it requests an ad,
+ * renders a banner into #sikads, and posts impression and view telemetry
+ * carrying only campaign and publisher ids. It reads no form fields.
+ *
+ * Excluded from the quote and contact pages all the same. Those two carry
+ * every name, email, phone number and address the site collects, and they are
+ * where a visitor converts — the pages least worth handing to a remote script
+ * for the sake of a fraction of a cent. Drop `excludePaths` in site.json to
+ * run it everywhere.
+ */
+const ads = (site as any).ads;
+const showAds =
+  !!ads?.enabled &&
+  !(ads.excludePaths ?? []).some((p: string) => Astro.url.pathname === p);
+const fullTitle = title === site.name ? `${site.name} — ${site.tagline}` : `${title} | ${site.name}`;
+const origin = (Astro.site ?? new URL('https://marshallsheds.com')).origin;
+const canonical = new URL(Astro.url.pathname, origin).href;
+// Social scrapers require an absolute URL — a root-relative path silently yields no preview.
+const ogImage = new URL(image ?? '/og/default.jpg', origin).href;
+
+const localBusiness = {
+  '@context': 'https://schema.org',
+  '@type': 'HomeAndConstructionBusiness',
+  name: site.name,
+  description: site.description,
+  url: origin,
+  image: ogImage,
+  ...(phoneLive ? { telephone: site.phoneRaw ?? site.phone } : {}),
+  // Withheld until the mailbox actually receives — a dead address in schema is worse than none.
+  // One address only at the business level: `email` is part of the NAP that
+  // aggregators cross-check, so it has to match the footer everywhere.
+  ...(site.email && !site.emailPending ? { email: site.email } : {}),
+  // Departmental addresses belong on contactPoint rather than the business
+  // record. contactType is a controlled vocabulary, so quotes@ rides along
+  // with sales — it is the same desk, and inventing a type helps nobody.
+  ...(!site.emailPending && site.emails
+    ? {
+        contactPoint: [
+          {
+            '@type': 'ContactPoint',
+            contactType: 'customer service',
+            email: site.emails.info,
+            ...(phoneLive ? { telephone: site.phoneRaw ?? site.phone } : {}),
+            areaServed: 'US',
+            availableLanguage: 'English',
+          },
+          {
+            '@type': 'ContactPoint',
+            contactType: 'sales',
+            email: site.emails.sales,
+            ...(phoneLive ? { telephone: site.phoneRaw ?? site.phone } : {}),
+            areaServed: 'US',
+            availableLanguage: 'English',
+          },
+        ],
+      }
+    : {}),
+  address: {
+    '@type': 'PostalAddress',
+    ...(site.address.street ? { streetAddress: site.address.street } : {}),
+    addressLocality: site.address.city || locations.base.city,
+    addressRegion: site.address.region || locations.base.stateCode,
+    ...(site.address.postal ? { postalCode: site.address.postal } : {}),
+    addressCountry: 'US',
+  },
+  areaServed: [
+    ...locations.counties.map((c: any) => ({ '@type': 'AdministrativeArea', name: `${c.name}, Texas` })),
+    ...locations.counties.flatMap((c: any) =>
+      c.communities.map((t: string) => ({ '@type': 'City', name: `${t}, Texas` }))
+    ),
+  ],
+  openingHoursSpecification: [{
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    opens: '08:00',
+    closes: '18:00',
+  }],
+  priceRange: '$$',
+  knowsAbout: [
+    'steel buildings', 'metal buildings', 'portable buildings', 'storage sheds',
+    'garages', 'workshops', 'barndominiums', 'quonset huts', 'carports',
+    'agricultural buildings', 'container covers',
+  ],
+};
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    {/* Stopgap while "Enforce HTTPS" is unticked in Settings → Pages. Until it
+        is, GitHub serves this domain over plain HTTP as well as HTTPS, and
+        there is no API to set it. This upgrades the visitor on arrival.
+
+        It is weaker than the real setting and not a replacement for it: the
+        first request still goes out in cleartext, so it cannot stop an active
+        attacker who intercepts that one. It closes the ordinary case — a
+        bookmark, a typed address, an old http:// link — and costs nothing once
+        the box is ticked, because GitHub's own redirect fires first. */}
+    <script is:inline>
+      if (
+        location.protocol === 'http:' &&
+        location.hostname !== 'localhost' &&
+        location.hostname !== '127.0.0.1'
+      ) {
+        location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+      }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {/* Pre-launch: keep the site out of search results. Crawling stays ALLOWED
+        in robots.txt so engines can actually see this directive — blocking the
+        crawl instead would leave bare URLs indexable and harder to remove.
+        Flip `indexable` to true in site.json at launch. */}
+    {!site.indexable && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={fullTitle} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <script type="application/ld+json" set:html={JSON.stringify(localBusiness)} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    {showAds && (
+      <script
+        is:inline
+        src="https://sikads.com/embed.js"
+        data-site-id={ads.siteId}
+        data-container="#sikads"
+        data-theme={ads.theme}
+        data-floor-cpm={ads.floorCpm}
+        async
+      />
+    )}
+  </head>
+  <body>
+    <Header />
+    <main id="main">
+      {crumbs.length > 0 && (
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <div class="wrap">
+            <ol>
+              <li><a href="/">Home</a></li>
+              {crumbs.map((c) => (
+                <li><a href={c.href}>{c.label}</a></li>
+              ))}
+              {current && <li aria-current="page">{current}</li>}
+            </ol>
+          </div>
+        </nav>
+      )}
+      <slot />
+
+      {showAds && (
+        <aside class="ad-slot" aria-label="Advertisement">
+          <div class="wrap">
+            <p class="ad-slot__label">Advertisement</p>
+            <div id="sikads"></div>
+          </div>
+        </aside>
+      )}
+    </main>
+    <Footer />
+
+    <style>
+      .crumbs { border-bottom: 1px solid var(--border); background: var(--bg-raised); }
+
+      /* The vendor's own CSS is width:100% !important, so it needs a bounded
+         parent or it spans the viewport. Reserve the height it renders at to
+         keep the ad from shoving the footer down once it loads. */
+      .ad-slot { margin-top: 3rem; }
+      .ad-slot__label {
+        font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.12em;
+        color: var(--text-faint); margin-bottom: 0.375rem;
+      }
+      .ad-slot #sikads { min-height: 68px; }
+      .crumbs ol {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+        list-style: none; padding: 0.75rem 0; margin: 0;
+        font-size: 0.8125rem; color: var(--text-faint);
+      }
+      .crumbs li + li::before { content: '/'; margin-right: 0.5rem; color: var(--border-strong); }
+      .crumbs a { color: var(--text-muted); text-decoration: none; }
+      .crumbs a:hover { color: var(--accent); }
+      .crumbs [aria-current='page'] { color: var(--text); font-weight: 500; }
+    </style>
+  </body>
+</html>
