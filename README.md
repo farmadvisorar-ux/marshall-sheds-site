@@ -97,6 +97,17 @@ drops the phrase rather than printing "ask for" and trailing off.
       named on the Business Profile. Leave `phonePending` in place for any
       future change — it lets a replacement number be recorded before the line
       is answered, instead of publishing it everywhere the moment it is typed.
+- [ ] **Give this business its own postal address.** `address` in
+      `site.json` is deliberately empty, so no address appears in the footer,
+      on the contact page, in the privacy page or in the business schema —
+      Google omits it rather than the sites sharing one. This is the half of
+      the duplicate-listing problem a separate phone number does not solve:
+      same-category listings at one address are treated as duplicates whatever
+      their numbers. Fill all four fields and every surface picks it up again;
+      the service-area pages and the 85 `areaServed` entries are unaffected
+      either way, so the site still works as a service-area business
+      in the meantime.
+
 - [ ] **Set up a form endpoint** of this site's own, and test a real submission
       end to end. Sharing an endpoint with another site mixes both inboxes.
 - [ ] **Set up email forwarding** for `info@`, `sales@` and `quotes@`, then set

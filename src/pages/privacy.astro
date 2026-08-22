@@ -1,7 +1,7 @@
 ---
 import Article from '../layouts/Article.astro';
 import site from '../data/site.json';
-import { phoneLive, phoneHref } from '../lib/contact';
+import { phoneLive, phoneHref, addressLive, addressLine } from '../lib/contact';
 ---
 
 <Article
@@ -106,10 +106,11 @@ import { phoneLive, phoneHref } from '../lib/contact';
     {!site.emailPending && (
       <Fragment> sent to <a href={`mailto:${site.emails.info}`}>{site.emails.info}</a> or</Fragment>
     )}
-    {' '}raised through the <a href="/contact/">contact page</a>. You can also write to
-    us at {site.address.street},
-    {' '}{site.address.city}, {site.address.region} {site.address.postal}
-    {phoneLive && <Fragment>, or call <a href={phoneHref}>{site.phone}</a></Fragment>}.
+    {' '}raised through the <a href="/contact/">contact page</a>.
+    {addressLive && <Fragment> You can also write to us at {addressLine}</Fragment>}
+    {addressLive && phoneLive && <Fragment>, or call <a href={phoneHref}>{site.phone}</a></Fragment>}
+    {!addressLive && phoneLive && <Fragment> You can also call <a href={phoneHref}>{site.phone}</a></Fragment>}
+    {(addressLive || phoneLive) && '.'}
   </p>
 </Article>
 

@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import site from '../data/site.json';
-import { phoneLive, phoneHref, contactName } from '../lib/contact';
+import { phoneLive, phoneHref, contactName, addressLive, addressLine } from '../lib/contact';
 
 // `||`, not `??`. An unset GitHub Actions variable interpolates as an empty
 // string rather than being absent, and `??` only falls through on null and
@@ -60,15 +60,15 @@ const mailboxes = [
             </div>
           )}
           <div><dt>Hours</dt><dd>{site.hours}</dd></div>
-          {site.address.city && (
+          {addressLive && (
             <div>
               <dt>Location</dt>
-              <dd>{[site.address.street, site.address.city, site.address.region, site.address.postal].filter(Boolean).join(', ')}</dd>
+              <dd>{addressLine}</dd>
             </div>
           )}
         </dl>
 
-        {(site.emailPending || !phoneLive) && (
+        {(site.emailPending || !phoneLive || !addressLive) && (
           <div class="admin-note">
             <strong>Publish note — remove before launch.</strong>
             {site.emailPending && (
@@ -77,6 +77,14 @@ const mailboxes = [
                 receiving. Set up forwarding, then flip <code>emailPending</code> to
                 <code>false</code> in <code>src/data/site.json</code> and it appears here,
                 in the footer and in the business schema.
+              </Fragment>
+            )}
+            {!addressLive && (
+              <Fragment>
+                {' '}No postal address is published yet. Fill in <code>address</code> in
+                <code>src/data/site.json</code> and it appears here, in the footer and in
+                the business schema. Two operations sharing one address are treated as
+                duplicate listings whatever their phone numbers, so this one needs its own.
               </Fragment>
             )}
             {!phoneLive && (

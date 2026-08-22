@@ -2,7 +2,7 @@
 import site from '../data/site.json';
 import types from '../data/building-types.json';
 import pb from '../data/portable-buildings.json';
-import { phoneLive, phoneHref } from '../lib/contact';
+import { phoneLive, phoneHref, addressStreet, addressLocality } from '../lib/contact';
 
 const year = new Date().getFullYear();
 const popular = ['garages', 'workshops', 'barndominium', 'quonset-buildings', 'container-covers', 'agricultural-and-farm'];
@@ -29,8 +29,8 @@ const pbPopular = ['barn', 'tool-shed-tall', 'utility-cabin', 'barn-garage', 'gr
         <p class="foot-desc">{site.tagline}</p>
         <address class="foot-nap">
           <span class="foot-nap__name">{site.name}</span>
-          <span>{site.address.street}</span>
-          <span>{site.address.city}, {site.address.region} {site.address.postal}</span>
+          {addressStreet && <span>{addressStreet}</span>}
+          {addressLocality && <span>{addressLocality}</span>}
           {phoneLive && <a href={phoneHref}>{site.phone}</a>}
           {/* Deliberately the general address only. This block is the NAP that
               directories and Google cross-reference, and it has to read the same

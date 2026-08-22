@@ -4,7 +4,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import site from '../data/site.json';
 import locations from '../data/locations.json';
-import { phoneLive } from '../lib/contact';
+import { phoneLive, addressLive } from '../lib/contact';
 
 interface Props {
   title: string;
@@ -100,14 +100,23 @@ const localBusiness = {
         ],
       }
     : {}),
-  address: {
-    '@type': 'PostalAddress',
-    ...(site.address.street ? { streetAddress: site.address.street } : {}),
-    addressLocality: site.address.city || locations.base.city,
-    addressRegion: site.address.region || locations.base.stateCode,
-    ...(site.address.postal ? { postalCode: site.address.postal } : {}),
-    addressCountry: 'US',
-  },
+  // Only what site.json actually holds. This used to fall back to
+  // locations.base for the locality, which meant emptying the address in
+  // site.json still published the home city in the schema — the one place
+  // nobody would think to check. A service-area business with no address to
+  // give publishes none, and leans on areaServed below.
+  ...(addressLive
+    ? {
+        address: {
+          '@type': 'PostalAddress',
+          ...(site.address.street ? { streetAddress: site.address.street } : {}),
+          ...(site.address.city ? { addressLocality: site.address.city } : {}),
+          ...(site.address.region ? { addressRegion: site.address.region } : {}),
+          ...(site.address.postal ? { postalCode: site.address.postal } : {}),
+          addressCountry: 'US',
+        },
+      }
+    : {}),
   areaServed: [
     ...locations.counties.map((c: any) => ({ '@type': 'AdministrativeArea', name: `${c.name}, Texas` })),
     ...locations.counties.flatMap((c: any) =>
