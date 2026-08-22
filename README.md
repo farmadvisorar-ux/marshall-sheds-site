@@ -161,7 +161,14 @@ npm run make:og
 `scripts/make-og.mjs` reads the same JSON the pages are built from, composites
 the photo, scrim, wordmark, eyebrow and title, and deletes any preview whose
 product no longer exists. Add a product and its preview appears on the next run.
-Fonts are fetched into `scripts/.fonts/` on first run and cached there.
+
+It takes the palette, display face and brand mark from `src/styles/global.css`
+and `src/components/Header.astro` rather than keeping its own copy, resolving
+`var()` chains down to hex. That matters because a duplicated design token is a
+stale one: change the accent colour or the logo and the previews follow, instead
+of quietly shipping the previous brand's colours forever. Whichever font the
+tokens name is fetched into `scripts/.fonts/` on first run and cached there, so
+switching typeface needs no change here either.
 
 ### Screening
 

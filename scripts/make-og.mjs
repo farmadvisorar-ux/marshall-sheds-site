@@ -31,47 +31,106 @@ const H = 630;
 const PAD = 64;
 const RULE = 8;
 
-// Pulled from src/styles/global.css so the previews and the site agree.
-const INK = '#14100d';       // --timber-950
-const ACCENT = '#d4695a';    // --barn-400, lifted for legibility over a photo
-const ACCENT_DEEP = '#c04435'; // --barn-500, the bottom rule
-const PAPER = '#ffffff';
-const PAPER_DIM = '#e3dcd1'; // --timber-200
+/**
+ * Palette, type and the brand mark are READ from the site rather than copied
+ * here. An earlier version hardcoded them with a comment promising they matched
+ * global.css; they did, until the next rebrand, after which every preview
+ * quietly kept the old brand's colours and logo while the site moved on. A
+ * duplicated design token is a stale design token, so these are derived.
+ */
+function declBlock(css, selector) {
+  const i = css.indexOf(selector);
+  if (i < 0) return '';
+  const s = css.indexOf('{', i);
+  const e = css.indexOf('}', s);
+  return css.slice(s + 1, e);
+}
+const decls = (block) =>
+  Object.fromEntries(
+    [...block.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)].map((m) => ['--' + m[1], m[2].trim()])
+  );
 
-const FONT_DISPLAY = 'Bitter Bold';
-const FONT_SANS = 'Source Sans 3';
+/** Follow `var(--a)` -> `var(--b)` -> `#hex`. */
+function resolve(value, scope, base) {
+  let v = (value ?? '').trim();
+  for (let i = 0; i < 10 && v.startsWith('var('); i++) {
+    const name = v.match(/var\((--[\w-]+)\)/)?.[1];
+    v = (scope[name] ?? base[name] ?? '').trim();
+  }
+  return v;
+}
+/** First real family out of a CSS font stack. */
+const family = (stack) => (stack ?? '').split(',')[0].replace(/["']/g, '').trim();
 
-const FONTS = [
-  ['Bitter:wght@700', 'Bitter-Bold.ttf'],
-  ['Source+Sans+3:wght@400', 'SourceSans3-Regular.ttf'],
-  ['Source+Sans+3:wght@700', 'SourceSans3-Bold.ttf'],
+async function readTheme() {
+  const css = await readFile('src/styles/global.css', 'utf8');
+  const light = decls(declBlock(css, ':root {'));
+  const dark = decls(declBlock(css, ':root[data-theme="dark"]'));
+
+  // The dark-mode accent is the one lifted for legibility, which is what a
+  // photo needs; the light accent is deeper and reads better as a solid rule.
+  const accent = resolve(dark['--accent'] ?? light['--accent'], { ...light, ...dark }, light);
+  const accentDeep = resolve(light['--accent'], light, light);
+  const ink = resolve(light['--bg-inverse'], light, light);
+
+  const display = family(light['--font-display']) || family(light['--font-sans']);
+  const sans = family(light['--font-sans']);
+
+  // The mark is lifted straight from the header so the two cannot diverge.
+  const header = await readFile('src/components/Header.astro', 'utf8');
+  const svg = header.match(/<svg class="brand__mark"[^>]*viewBox="([^"]+)"[^>]*>([\s\S]*?)<\/svg>/);
+  if (!svg) throw new Error('could not find .brand__mark in Header.astro');
+
+  // Dimmer half of the wordmark: the light-mode border tone, which is a
+  // brand-tinted near-white in every palette here.
+  const paperDim = resolve(light['--border'], light, light) || '#e5e5e5';
+
+  return {
+    ink, accent, accentDeep, display, sans, paperDim,
+    markViewBox: svg[1],
+    markBody: svg[2].replace(/currentColor/g, accent),
+  };
+}
+
+/** Fallback ground when a job has no photo: the mid neutral from the ramp. */
+function resolveGround(theme) {
+  return theme.ink;
+}
+
+/** Google Fonts serves a static TTF per weight; fetch just what is rendered. */
+const fontJobs = (theme) => [
+  [`${theme.display.replace(/ /g, '+')}:wght@700`, `${theme.display.replace(/ /g, '-')}-700.ttf`],
+  [`${theme.sans.replace(/ /g, '+')}:wght@400`, `${theme.sans.replace(/ /g, '-')}-400.ttf`],
+  [`${theme.sans.replace(/ /g, '+')}:wght@700`, `${theme.sans.replace(/ /g, '-')}-700.ttf`],
 ];
 
-async function ensureFonts() {
+async function ensureFonts(jobs) {
   const dir = join('scripts', '.fonts');
   await mkdir(dir, { recursive: true });
   let fetched = 0;
-  for (const [spec, file] of FONTS) {
+  for (const [spec, file] of jobs) {
     const dest = join(dir, file);
     if (existsSync(dest)) continue;
     const css = await fetch(`https://fonts.googleapis.com/css2?family=${spec}&display=swap`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     }).then((r) => r.text());
     const url = css.match(/https:\/\/fonts\.gstatic\.com[^)]*/)?.[0];
-    if (!url) throw new Error(`could not resolve a font file for ${spec}`);
+    if (!url) throw new Error(`could not resolve a font file for ${spec} — is it on Google Fonts?`);
     await writeFile(dest, Buffer.from(await fetch(url).then((r) => r.arrayBuffer())));
     fetched++;
   }
-  // librsvg and Pango find fonts through fontconfig, not through a path we
-  // can pass in, so they have to be visible to the user's font config.
+  // librsvg and Pango find fonts through fontconfig, not through a path we can
+  // pass in, so they have to be visible to this user's font config.
   const userFonts = join(homedir(), '.local', 'share', 'fonts');
   await mkdir(userFonts, { recursive: true });
-  for (const [, file] of FONTS) {
+  for (const [, file] of jobs) {
     await writeFile(join(userFonts, file), await readFile(join(dir, file)));
   }
   await run('fc-cache', ['-f']).catch(() => {});
   console.log(`fonts ready${fetched ? ` (${fetched} downloaded)` : ' (cached)'}`);
 }
+
+const PAPER = '#ffffff';
 
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -94,60 +153,72 @@ async function textLayer(markup, { font, width, letterSpacing }) {
   return { input: data, width: info.width, height: info.height };
 }
 
-/** Title at the largest size that still fits two comfortable lines. */
-async function fitTitle(text, maxWidth) {
-  for (const size of [54, 46, 40, 34]) {
-    const layer = await textLayer(`<span foreground="${PAPER}">${esc(text)}</span>`, {
-      font: `${FONT_DISPLAY} ${size}`,
-      width: maxWidth,
+/**
+ * Title at the largest size that reads well.
+ *
+ * A single line beats a slightly larger one that drops a lone word onto a
+ * second — the display face changes with the brand, so what fits at 54 in one
+ * palette wraps in the next. Only a modest step down is worth taking for that:
+ * below 46 a one-liner is smaller than a well-set two-liner, so past that the
+ * rule is simply the biggest size that fits the height.
+ */
+async function fitTitle(text, maxWidth, theme) {
+  const render = (size, width) =>
+    textLayer(`<span foreground="${PAPER}">${esc(text)}</span>`, {
+      font: `${theme.display} Bold ${size}`,
+      ...(width ? { width } : {}),
     });
+
+  for (const size of [54, 50, 46]) {
+    const natural = await render(size);
+    if (natural.width <= maxWidth) return natural;
+  }
+  for (const size of [54, 46, 40, 34]) {
+    const layer = await render(size, maxWidth);
     if (layer.height <= 150 || size === 34) return layer;
   }
 }
 
-/** Gambrel mark, the same geometry as the header logo. */
-const markSvg = (size) => Buffer.from(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">
-     <path d="M3 15 L9 7.5 L16 4 L23 7.5 L29 15 L29 28 L3 28 Z" fill="none" stroke="${ACCENT}" stroke-width="2.4" stroke-linejoin="round"/>
-     <path d="M12.5 28 L12.5 19.5 L19.5 19.5 L19.5 28" fill="none" stroke="${ACCENT}" stroke-width="2.4" stroke-linejoin="round"/>
-   </svg>`
+/** The header's own brand mark, recoloured to the accent. */
+const markSvg = (size, theme) => Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${theme.markViewBox}">${theme.markBody}</svg>`
 );
 
 /** Scrims and the bottom rule, in one overlay. */
-const scrimSvg = () => Buffer.from(
+const scrimSvg = (theme) => Buffer.from(
   `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
      <defs>
        <linearGradient id="down" x1="0" y1="0" x2="0" y2="1">
-         <stop offset="0" stop-color="${INK}" stop-opacity="0.55"/>
-         <stop offset="1" stop-color="${INK}" stop-opacity="0"/>
+         <stop offset="0" stop-color="${theme.ink}" stop-opacity="0.55"/>
+         <stop offset="1" stop-color="${theme.ink}" stop-opacity="0"/>
        </linearGradient>
        <linearGradient id="up" x1="0" y1="0" x2="0" y2="1">
-         <stop offset="0" stop-color="${INK}" stop-opacity="0"/>
-         <stop offset="0.55" stop-color="${INK}" stop-opacity="0.72"/>
-         <stop offset="1" stop-color="${INK}" stop-opacity="0.93"/>
+         <stop offset="0" stop-color="${theme.ink}" stop-opacity="0"/>
+         <stop offset="0.55" stop-color="${theme.ink}" stop-opacity="0.72"/>
+         <stop offset="1" stop-color="${theme.ink}" stop-opacity="0.93"/>
        </linearGradient>
      </defs>
      <rect x="0" y="0" width="${W}" height="200" fill="url(#down)"/>
      <rect x="0" y="${H - 340}" width="${W}" height="340" fill="url(#up)"/>
-     <rect x="0" y="${H - RULE}" width="${W}" height="${RULE}" fill="${ACCENT_DEEP}"/>
+     <rect x="0" y="${H - RULE}" width="${W}" height="${RULE}" fill="${theme.accentDeep}"/>
    </svg>`
 );
 
-async function compose({ photo, eyebrow, title, out, brand }) {
+async function compose({ photo, eyebrow, title, out, brand, theme }) {
   const base = photo && existsSync(photo)
     ? sharp(photo).resize(W, H, { fit: 'cover', position: 'centre' })
-    : sharp({ create: { width: W, height: H, channels: 3, background: '#3d332a' } });
+    : sharp({ create: { width: W, height: H, channels: 3, background: theme.ground } });
 
-  const layers = [{ input: scrimSvg(), top: 0, left: 0 }];
+  const layers = [{ input: scrimSvg(theme), top: 0, left: 0 }];
 
   // brand lockup, top left
   const MARK = 34;
-  layers.push({ input: markSvg(MARK), top: 54, left: PAD });
+  layers.push({ input: markSvg(MARK, theme), top: 54, left: PAD });
   const [name, ...rest] = brand.split(' ');
   const wordmark = await textLayer(
     `<span foreground="${PAPER}" weight="bold">${esc(name)}</span>` +
-      `<span foreground="${PAPER_DIM}"> ${esc(rest.join(' '))}</span>`,
-    { font: `${FONT_SANS} 23` }
+      `<span foreground="${theme.paperDim}"> ${esc(rest.join(' '))}</span>`,
+    { font: `${theme.sans} 23` }
   );
   layers.push({
     input: wordmark.input,
@@ -156,10 +227,10 @@ async function compose({ photo, eyebrow, title, out, brand }) {
   });
 
   // eyebrow + title, stacked up from the rule
-  const titleLayer = await fitTitle(title, W - PAD * 2);
+  const titleLayer = await fitTitle(title, W - PAD * 2, theme);
   const eyebrowLayer = await textLayer(
-    `<span foreground="${ACCENT}" weight="bold">${esc(eyebrow.toUpperCase())}</span>`,
-    { font: `${FONT_SANS} 17`, letterSpacing: 2400 }
+    `<span foreground="${theme.accent}" weight="bold">${esc(eyebrow.toUpperCase())}</span>`,
+    { font: `${theme.sans} 17`, letterSpacing: 2400 }
   );
 
   const titleTop = H - RULE - 30 - titleLayer.height;
@@ -177,7 +248,12 @@ async function compose({ photo, eyebrow, title, out, brand }) {
 const asset = (webPath) => (webPath ? join('public', webPath.replace(/^\//, '')) : null);
 
 async function main() {
-  await ensureFonts();
+  const theme = await readTheme();
+  theme.ground = theme.markViewBox ? resolveGround(theme) : '#333';
+  await ensureFonts(fontJobs(theme));
+  console.log(
+    `theme from global.css — ${theme.display} / ${theme.sans}, accent ${theme.accent}, rule ${theme.accentDeep}`
+  );
 
   const [site, types, portable, inventory, images] = await Promise.all([
     read('src/data/site.json'),
@@ -196,6 +272,7 @@ async function main() {
     title: site.tagline,
     out: 'public/og/default.jpg',
     brand,
+    theme,
   });
 
   for (const t of types) {
@@ -205,6 +282,7 @@ async function main() {
       title: t.name,
       out: `public/og/types/${t.slug.replace(/\//g, '-')}.jpg`,
       brand,
+      theme,
     });
   }
 
@@ -216,6 +294,7 @@ async function main() {
       title: p.name,
       out: `public/og/portable/${p.slug}.jpg`,
       brand,
+      theme,
     });
   }
 
@@ -226,6 +305,7 @@ async function main() {
       title: i.title,
       out: `public/og/inventory/${i.slug}.jpg`,
       brand,
+      theme,
     });
   }
 
