@@ -15,13 +15,17 @@ export function getStaticPaths() {
 
 const { option, fam } = Astro.props;
 const siblings = fam.items.filter((o: any) => o.slug !== option.slug);
+
+/**
+ * familyName reads "Straight Wall Building Options", which pushes the title
+ * past what Google prints once Base appends the brand suffix. The page still
+ * shows the full name — familyShort is the search-result form.
+ */
+const title = `${option.name} — ${fam.familyShort}`;
 ---
 
 <Base
-  {/* familyName reads "Straight Wall Building Options", which pushes the
-      title past what Google prints once the brand suffix is added. The
-      page still shows the full name — this is the search-result form. */}
-  title={`${option.name} — ${fam.familyShort}`}
+  title={title}
   description={option.summary}
   crumbs={[
     { label: 'Options & Finishes', href: '/options-and-finishes/' },
