@@ -270,7 +270,7 @@ variables in the project:
 
 | Variable | Value |
 |---|---|
-| `PUBLIC_SITE_URL` | the real origin, e.g. `https://marshallsheds.com` |
+| `PUBLIC_SITE_URL` | the real origin once you own one. Until then the build falls back to the Vercel domain that actually serves the site, so previews and canonicals resolve |
 | `PUBLIC_FORM_ENDPOINT` | the form endpoint |
 
 `PUBLIC_SITE_URL` overrides the fallback in `astro.config.mjs`. Until it is set

@@ -7,7 +7,17 @@ export default defineConfig({
   // Canonical origin. Set PUBLIC_SITE_URL in the host's environment to
   // override without a code change — it drives canonical URLs, the sitemap
   // and the absolute OG image URLs, all of which are wrong until it is right.
-  site: process.env.PUBLIC_SITE_URL ?? 'https://marshallsheds.com',
+  // Canonical origin. Set PUBLIC_SITE_URL in the host's environment to override
+  // without a code change — it drives canonical URLs, the sitemap and the
+  // absolute OG image URLs.
+  //
+  // The fallback is the domain actually serving the site, not the one it will
+  // eventually move to. It used to be marshallsheds.com, which has no DNS record:
+  // canonical pointed at nothing and every og:image resolved to a dead host, so
+  // sharing a link produced no preview at all. A fallback that is merely
+  // aspirational is worse than none — nothing fails loudly, the previews are
+  // just silently blank.
+  site: process.env.PUBLIC_SITE_URL ?? 'https://marshall-sheds-site.vercel.app',
   output: 'static',
   build: { format: 'directory' },
   compressHTML: true,
